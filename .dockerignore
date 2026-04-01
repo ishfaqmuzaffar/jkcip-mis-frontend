@@ -1,0 +1,10 @@
+.git
+.gitignore
+build/
+.dart_tool/
+.idea/
+.vscode/
+node_modules/
+*.log
+*.lock
+.env
