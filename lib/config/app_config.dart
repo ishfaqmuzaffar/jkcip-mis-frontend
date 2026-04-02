@@ -1,5 +1,3 @@
-import 'dart:html' as html;
-
 class AppConfig {
   static const String _envBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
@@ -7,12 +5,13 @@ class AppConfig {
   );
 
   static String get baseUrl {
-    if (_envBaseUrl.trim().isNotEmpty) {
-      return _normalize(_envBaseUrl);
+    final env = _normalize(_envBaseUrl);
+    if (env.isNotEmpty) {
+      return env;
     }
 
-    final host = html.window.location.hostname;
-    if ((host ?? '').isNotEmpty && host != 'localhost') {
+    final host = Uri.base.host.trim();
+    if (host.isNotEmpty && host != 'localhost' && host != '127.0.0.1') {
       return 'http://$host:3002/api';
     }
 
@@ -21,6 +20,7 @@ class AppConfig {
 
   static String _normalize(String value) {
     final trimmed = value.trim();
+    if (trimmed.isEmpty) return '';
     if (trimmed.endsWith('/')) {
       return trimmed.substring(0, trimmed.length - 1);
     }

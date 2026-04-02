@@ -1,21 +1,26 @@
 JKCIP MIS FRONTEND DEPLOY NOTES
-================================
 
-1. Default API base URL
-   http://72.60.28.22:3002/api
+1) Set build arg in Coolify:
+API_BASE_URL=http://72.60.28.22:3002/api
 
-2. To point the frontend to another backend during Docker build, set:
-   API_BASE_URL=https://your-domain/api
+2) This frontend is aligned to these backend modules:
+- dashboard
+- schemes
+- projects
+- beneficiaries
+- approvals
+- users
+- profile
+- control room overview
 
-3. Example docker build:
-   docker build --build-arg API_BASE_URL=http://72.60.28.22:3002/api -t jkcip-mis-frontend .
+3) If you still see an old Flutter UI after deploy:
+- open the site in an incognito window
+- hard refresh with Ctrl+F5
+- clear site data / unregister the service worker in browser dev tools
 
-4. Coolify note:
-   Add build arg named API_BASE_URL if your backend URL changes.
-
-5. Improvements in this updated zip:
-   - API base URL is now configurable via build args / dart-define
-   - web fallback resolves current browser host automatically when possible
-   - API calls now use request timeouts
-   - better error handling for 400/401/403/404/500 responses
-   - cleaned deployment-ready package
+4) Login roles supported by UI:
+- SUPER_ADMIN
+- ADMIN
+- DEPARTMENT_OFFICER
+- DATA_ENTRY
+- VIEWER
