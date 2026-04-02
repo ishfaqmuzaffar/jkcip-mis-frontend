@@ -6,7 +6,6 @@ import '../config/app_config.dart';
 import 'auth_storage_service.dart';
 
 class ApiService {
-  static String get baseUrlLabel => AppConfig.baseUrl;
   static Uri _uri(String path) => Uri.parse('${AppConfig.baseUrl}$path');
 
   static Future<Map<String, String>> _headers({bool authenticated = false}) async {
@@ -63,7 +62,7 @@ class ApiService {
       return Exception('Unauthorized');
     }
     if (response.statusCode == 403) {
-      return Exception('Forbidden');
+      return Exception('Access denied for this module. Please sign out and sign in again. If it still fails, the backend role guard is blocking this request.');
     }
     return Exception('Request failed with status ${response.statusCode}.');
   }

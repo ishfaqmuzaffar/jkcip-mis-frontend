@@ -31,6 +31,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Map<String, dynamic>> projects = [];
   List<Map<String, dynamic>> beneficiaries = [];
   List<Map<String, dynamic>> approvals = [];
+  final Map<String, String> moduleErrors = {};
 
   @override
   void initState() {
@@ -64,58 +65,60 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       isLoading = true;
       errorMessage = null;
+      moduleErrors.clear();
     });
+
+    Future<T?> guarded<T>(String module, Future<T> Function() loader) async {
+      try {
+        return await loader();
+      } catch (e) {
+        final message = e.toString().replaceFirst('Exception: ', '');
+        if (message.toLowerCase().contains('unauthorized') || message.contains('401')) {
+          rethrow;
+        }
+        moduleErrors[module] = message;
+        return null;
+      }
+    }
 
     try {
       final cachedUser = await AuthStorageService.getUser();
 
-      final results = await Future.wait<dynamic>([
-        ApiService.getDashboardStats(),
-        ApiService.getDashboardOverview(),
-        ApiService.getRecentActivity(),
-        ApiService.getProfile(),
-        ApiService.getSchemes(),
-        ApiService.getProjects(),
-        ApiService.getBeneficiaries(),
-        ApiService.getApprovals(),
-      ]);
-
-      final loadedStats = Map<String, dynamic>.from(results[0] as Map<String, dynamic>);
-      final loadedOverview = Map<String, dynamic>.from(results[1] as Map<String, dynamic>);
-      final loadedRecent = Map<String, dynamic>.from(results[2] as Map<String, dynamic>);
-      final profile = Map<String, dynamic>.from(results[3] as Map<String, dynamic>);
-      final loadedSchemes = List<Map<String, dynamic>>.from(results[4] as List<Map<String, dynamic>>);
-      final loadedProjects = List<Map<String, dynamic>>.from(results[5] as List<Map<String, dynamic>>);
-      final loadedBeneficiaries = List<Map<String, dynamic>>.from(results[6] as List<Map<String, dynamic>>);
-      final loadedApprovals = List<Map<String, dynamic>>.from(results[7] as List<Map<String, dynamic>>);
+      final loadedStats = await guarded<Map<String, dynamic>>('Dashboard stats', ApiService.getDashboardStats) ?? {};
+      final loadedOverview = await guarded<Map<String, dynamic>>('Dashboard overview', ApiService.getDashboardOverview) ?? {};
+      final loadedRecent = await guarded<Map<String, dynamic>>('Recent activity', ApiService.getRecentActivity) ?? {};
+      final profile = await guarded<Map<String, dynamic>>('Profile', ApiService.getProfile) ?? (cachedUser ?? <String, dynamic>{});
+      final loadedSchemes = await guarded<List<Map<String, dynamic>>>('Schemes', ApiService.getSchemes) ?? <Map<String, dynamic>>[];
+      final loadedProjects = await guarded<List<Map<String, dynamic>>>('Projects', ApiService.getProjects) ?? <Map<String, dynamic>>[];
+      final loadedBeneficiaries = await guarded<List<Map<String, dynamic>>>('Beneficiaries', ApiService.getBeneficiaries) ?? <Map<String, dynamic>>[];
+      final loadedApprovals = await guarded<List<Map<String, dynamic>>>('Approvals', ApiService.getApprovals) ?? <Map<String, dynamic>>[];
 
       final role = (profile['role'] ?? cachedUser?['role'] ?? '').toString();
       List<Map<String, dynamic>> loadedUsers = [];
 
       if (role == 'SUPER_ADMIN' || role == 'ADMIN') {
-        try {
-          loadedUsers = await ApiService.getUsers();
-        } catch (_) {
-          loadedUsers = [];
-        }
+        loadedUsers = await guarded<List<Map<String, dynamic>>>('Users', ApiService.getUsers) ?? <Map<String, dynamic>>[];
       }
 
-      await AuthStorageService.saveLogin(
-        token: (await AuthStorageService.getToken()) ?? '',
-        user: profile,
-      );
+      final existingToken = await AuthStorageService.getToken();
+      if (existingToken != null && existingToken.isNotEmpty && profile.isNotEmpty) {
+        await AuthStorageService.saveLogin(
+          token: existingToken,
+          user: profile,
+        );
+      }
 
       if (!mounted) return;
       setState(() {
-        stats = loadedStats;
-        overview = loadedOverview;
-        recentActivity = loadedRecent;
-        currentUser = profile;
-        users = loadedUsers;
-        schemes = loadedSchemes;
-        projects = loadedProjects;
-        beneficiaries = loadedBeneficiaries;
-        approvals = loadedApprovals;
+        stats = Map<String, dynamic>.from(loadedStats);
+        overview = Map<String, dynamic>.from(loadedOverview);
+        recentActivity = Map<String, dynamic>.from(loadedRecent);
+        currentUser = Map<String, dynamic>.from(profile);
+        users = List<Map<String, dynamic>>.from(loadedUsers);
+        schemes = List<Map<String, dynamic>>.from(loadedSchemes);
+        projects = List<Map<String, dynamic>>.from(loadedProjects);
+        beneficiaries = List<Map<String, dynamic>>.from(loadedBeneficiaries);
+        approvals = List<Map<String, dynamic>>.from(loadedApprovals);
 
         final labels = navItems.map((e) => e.label).toList();
         if (selectedIndex >= labels.length) {
@@ -635,19 +638,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Widget _heroMetric(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Color(0xFFD7E9FA))),
-          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-        ],
-      ),
-    );
-  }
-
   void _showSnack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
@@ -669,20 +659,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    final isDesktop = width >= 1180;
+    final isDesktop = width >= 1100;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FB),
+      backgroundColor: const Color(0xFFF3F6FB),
       drawer: isDesktop ? null : Drawer(child: _buildSidebar()),
       body: SafeArea(
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (isDesktop)
-              SizedBox(
-                width: 276,
-                child: _buildSidebar(),
-              ),
+            if (isDesktop) SizedBox(width: 300, child: _buildSidebar()),
             Expanded(
               child: Column(
                 children: [
@@ -696,8 +682,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 onRefresh: loadDashboard,
                                 child: SingleChildScrollView(
                                   physics: const AlwaysScrollableScrollPhysics(),
-                                  padding: EdgeInsets.fromLTRB(isDesktop ? 28 : 16, 20, isDesktop ? 28 : 16, 28),
-                                  child: _buildContent(),
+                                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+                                  child: _buildContent(theme),
                                 ),
                               ),
                   ),
@@ -712,16 +698,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildTopBar(bool isDesktop) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(bottom: BorderSide(color: Color(0xFFE3EBF5))),
+        border: Border(bottom: BorderSide(color: Color(0xFFE6ECF5))),
       ),
-      child: Wrap(
-        spacing: 14,
-        runSpacing: 14,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        alignment: WrapAlignment.spaceBetween,
+      child: Row(
         children: [
           if (!isDesktop)
             Builder(
@@ -730,61 +712,75 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 onPressed: () => Scaffold.of(context).openDrawer(),
               ),
             ),
-          ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 280, maxWidth: 760),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'JKCIP Management Information System',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 22,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFF102A43),
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 Text(
-                  'Unified operational dashboard for schemes, projects, beneficiaries, approvals, and users.',
-                  style: TextStyle(color: Colors.blueGrey.shade600, height: 1.4),
+                  'Live administrative dashboard with institutional metrics, MIS workflows, and role-based access.',
+                  style: TextStyle(
+                    color: Colors.blueGrey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
           ),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            crossAxisAlignment: WrapCrossAlignment.center,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModuleWarnings() {
+    if (moduleErrors.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4E5),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFFFD79A)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF4F7FB),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE3EBF5)),
+              Icon(Icons.info_outline_rounded, color: Color(0xFF9A5B00)),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Some MIS modules could not be loaded.',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF7A4A00),
+                  ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.cloud_done_outlined, size: 18, color: Color(0xFF14539A)),
-                    const SizedBox(width: 8),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 280),
-                      child: Text(
-                        'Connected to ${ApiService.baseUrlLabel}',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF334E68)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: isLoading ? null : loadDashboard,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Refresh data'),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          ...moduleErrors.entries.map(
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                '• ${entry.key}: ${entry.value}',
+                style: const TextStyle(color: Color(0xFF7A4A00), height: 1.4),
+              ),
+            ),
           ),
         ],
       ),
@@ -793,12 +789,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildSidebar() {
     return Container(
-      color: const Color(0xFF0C3B70),
+      color: const Color(0xFF0B3C6F),
       child: Column(
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(22, 24, 22, 18),
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
             decoration: const BoxDecoration(
               border: Border(bottom: BorderSide(color: Color(0x1FFFFFFF))),
             ),
@@ -808,52 +804,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Row(
                   children: [
                     Container(
-                      height: 48,
-                      width: 48,
+                      height: 52,
+                      width: 52,
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      child: const Icon(Icons.dashboard_customize_rounded, color: Colors.white),
+                      child: const Icon(Icons.account_balance, color: Colors.white),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     const Expanded(
                       child: Text(
                         'JKCIP MIS',
-                        style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 20),
                 Text(
                   currentUser?['fullName']?.toString() ?? 'Authorized User',
-                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  currentUser?['email']?.toString() ?? '',
-                  style: const TextStyle(color: Color(0xFFB7CBE1), fontSize: 12),
-                ),
-                const SizedBox(height: 14),
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withOpacity(0.06)),
+                    color: Colors.white.withOpacity(0.14),
+                    borderRadius: BorderRadius.circular(100),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(roleLabel, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 6),
-                      Text(
-                        '${getIntStat('totalProjects')} projects • ${getIntStat('totalBeneficiaries')} beneficiaries',
-                        style: const TextStyle(color: Color(0xFFD7E6F4), height: 1.4),
-                      ),
-                    ],
+                  child: Text(
+                    roleLabel,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -863,15 +857,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: navItems.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 6),
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final item = navItems[index];
                 final isSelected = selectedIndex == index;
                 return Material(
                   color: isSelected ? Colors.white : Colors.transparent,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                     onTap: () {
                       setState(() => selectedIndex = index);
                       if (Scaffold.maybeOf(context)?.isDrawerOpen ?? false) {
@@ -879,18 +873,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       }
                     },
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
                       child: Row(
                         children: [
-                          Icon(item.icon, size: 20, color: isSelected ? const Color(0xFF0C3B70) : Colors.white),
-                          const SizedBox(width: 12),
+                          Icon(item.icon, color: isSelected ? const Color(0xFF0B3C6F) : Colors.white),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: Text(
                               item.label,
                               style: TextStyle(
-                                color: isSelected ? const Color(0xFF0C3B70) : Colors.white,
+                                color: isSelected ? const Color(0xFF0B3C6F) : Colors.white,
                                 fontWeight: FontWeight.w700,
-                                fontSize: 14,
+                                fontSize: 15,
                               ),
                             ),
                           ),
@@ -903,17 +897,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.all(16),
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF0C3B70),
+                  foregroundColor: const Color(0xFF0B3C6F),
                 ),
                 onPressed: isLoggingOut ? null : logout,
                 icon: isLoggingOut
-                    ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Icon(Icons.logout_rounded),
                 label: const Text('Logout'),
               ),
@@ -924,27 +922,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildContent() {
+  Widget _buildContent(ThemeData theme) {
     final label = navItems[selectedIndex].label;
+    late final Widget body;
 
     switch (label) {
       case 'Analytics':
-        return _buildAnalyticsView();
+        body = _buildAnalyticsView();
+        break;
       case 'Schemes':
-        return _buildSchemesView();
+        body = _buildSchemesView();
+        break;
       case 'Projects':
-        return _buildProjectsView();
+        body = _buildProjectsView();
+        break;
       case 'Beneficiaries':
-        return _buildBeneficiariesView();
+        body = _buildBeneficiariesView();
+        break;
       case 'Approvals':
-        return _buildApprovalsView();
+        body = _buildApprovalsView();
+        break;
       case 'Users':
-        return _UsersView(users: users);
+        body = _UsersView(users: users);
+        break;
       case 'Profile':
-        return _ProfileView(user: currentUser ?? const {});
+        body = _ProfileView(user: currentUser ?? const {});
+        break;
       default:
-        return _buildOverviewView();
+        body = _buildOverviewView();
     }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildModuleWarnings(),
+        body,
+      ],
+    );
   }
 
   Widget _buildOverviewView() {
@@ -952,12 +966,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildHeroBanner(),
-        const SizedBox(height: 20),
+        const SizedBox(height: 22),
         _buildKpis(),
-        const SizedBox(height: 20),
+        const SizedBox(height: 22),
         LayoutBuilder(
           builder: (context, constraints) {
-            if (constraints.maxWidth < 1000) {
+            final stacked = constraints.maxWidth < 980;
+            if (stacked) {
               return Column(
                 children: [
                   _buildStatusBarChart(),
@@ -976,73 +991,100 @@ class _DashboardScreenState extends State<DashboardScreen> {
             );
           },
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 22),
         _buildRecentActivityPanel(),
       ],
     );
   }
 
   Widget _buildHeroBanner() {
-    final budget = getIntStat('totalBudget');
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(26),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF0E467F), Color(0xFF1C78C0)],
+          colors: [Color(0xFF0E467F), Color(0xFF1A6ABA)],
         ),
-        boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 20, offset: Offset(0, 12))],
+        boxShadow: const [
+          BoxShadow(color: Color(0x18000000), blurRadius: 24, offset: Offset(0, 14)),
+        ],
       ),
       child: Wrap(
-        spacing: 18,
         runSpacing: 18,
+        spacing: 18,
         alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.start,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760),
+          SizedBox(
+            width: 680,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Executive overview', style: TextStyle(color: Color(0xFFD7E9FA), fontWeight: FontWeight.w700)),
+                const Text(
+                  'Operational Overview',
+                  style: TextStyle(color: Color(0xFFD8E9FA), fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 10),
                 Text(
-                  'Welcome back, ${currentUser?['fullName'] ?? 'User'}. Track live MIS activity across schemes, projects, beneficiaries, approvals, and institutional users from one screen.',
-                  style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w800, height: 1.2),
+                  'Welcome, ${currentUser?['fullName'] ?? 'User'}. Monitor schemes, projects, beneficiaries, and approvals from one professional MIS dashboard.',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    height: 1.25,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'This dashboard is designed for end-to-end visibility, fast review cycles, and operational control across all PMU workflows.',
-                  style: TextStyle(color: Color(0xFFD7E9FA), height: 1.5),
+                  'This interface now pulls live MIS modules from your backend and supports role-based workflows for viewing, creation, and approvals.',
+                  style: TextStyle(color: Color(0xFFD8E9FA), height: 1.5),
                 ),
               ],
             ),
           ),
-          SizedBox(
-            width: 300,
-            child: Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.12)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Live system state', style: TextStyle(color: Color(0xFFD7E9FA), fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 10),
-                  Text('₹$budget', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 14),
-                  _heroMetric('Active schemes', getIntStat('totalSchemes').toString()),
-                  _heroMetric('Ongoing projects', _asCountMap('projectsByStatus')['ONGOING']?.toString() ?? '0'),
-                  _heroMetric('Pending approvals', getIntStat('pendingApprovals').toString()),
-                  _heroMetric('Supported beneficiaries', _asCountMap('beneficiariesByStatus')['SUPPORTED']?.toString() ?? getIntStat('totalBeneficiaries').toString()),
-                ],
-              ),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: Colors.white.withOpacity(0.14)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Access Profile',
+                  style: TextStyle(color: Color(0xFFD8E9FA), fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  roleLabel,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  currentUser?['department']?.toString().isNotEmpty == true
+                      ? currentUser!['department'].toString()
+                      : 'Department not assigned',
+                  style: const TextStyle(color: Color(0xFFD8E9FA)),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  canReview
+                      ? 'Review access enabled'
+                      : canCreate
+                          ? 'Submission access enabled'
+                          : 'View-only access',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                ),
+              ],
             ),
           ),
         ],
@@ -1052,12 +1094,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildKpis() {
     final cards = [
-      _KpiData(title: 'Users', value: getIntStat('totalUsers').toString(), subtitle: 'System accounts', icon: Icons.groups_outlined),
-      _KpiData(title: 'Schemes', value: getIntStat('totalSchemes').toString(), subtitle: 'Live schemes in MIS', icon: Icons.account_tree_outlined),
-      _KpiData(title: 'Projects', value: getIntStat('totalProjects').toString(), subtitle: 'Tracked implementation units', icon: Icons.assignment_outlined),
-      _KpiData(title: 'Beneficiaries', value: getIntStat('totalBeneficiaries').toString(), subtitle: 'Registered programme beneficiaries', icon: Icons.people_alt_outlined),
+      _KpiData(title: 'Total Users', value: getIntStat('totalUsers').toString(), subtitle: 'Registered system users', icon: Icons.groups_outlined),
+      _KpiData(title: 'Schemes', value: getIntStat('totalSchemes').toString(), subtitle: 'All schemes in MIS', icon: Icons.account_tree_outlined),
+      _KpiData(title: 'Projects', value: getIntStat('totalProjects').toString(), subtitle: 'Tracked projects', icon: Icons.assignment_outlined),
+      _KpiData(title: 'Beneficiaries', value: getIntStat('totalBeneficiaries').toString(), subtitle: 'Registered beneficiaries', icon: Icons.people_alt_outlined),
       _KpiData(title: 'Pending Approvals', value: getIntStat('pendingApprovals').toString(), subtitle: 'Awaiting decision', icon: Icons.pending_actions_outlined),
-      _KpiData(title: 'Approved', value: getIntStat('approvedApprovals').toString(), subtitle: 'Approved workflow items', icon: Icons.verified_outlined),
+      _KpiData(title: 'Approved Approvals', value: getIntStat('approvedApprovals').toString(), subtitle: 'Already approved items', icon: Icons.verified_outlined),
     ];
 
     return GridView.builder(
@@ -1065,10 +1107,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       physics: const NeverScrollableScrollPhysics(),
       itemCount: cards.length,
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 260,
-        mainAxisExtent: 160,
-        mainAxisSpacing: 16,
-        crossAxisSpacing: 16,
+        maxCrossAxisExtent: 320,
+        mainAxisExtent: 190,
+        mainAxisSpacing: 18,
+        crossAxisSpacing: 18,
       ),
       itemBuilder: (context, index) => _KpiCard(data: cards[index]),
     );
@@ -1213,36 +1255,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final recentBeneficiaries = _asMapList(recentActivity['beneficiaries']);
     final recentApprovals = _asMapList(recentActivity['approvals']);
 
-    final widgets = [
-      _Panel(
-        title: 'Recent Schemes',
-        subtitle: 'Most recently added schemes.',
-        child: _ActivityList(items: recentSchemes, titleKey: 'title', subtitleBuilder: (item) => '${item['code'] ?? '-'} • ${item['department'] ?? '-'}'),
-      ),
-      _Panel(
-        title: 'Recent Projects',
-        subtitle: 'Latest project records.',
-        child: _ActivityList(items: recentProjects, titleKey: 'name', subtitleBuilder: (item) => '${item['code'] ?? '-'} • ${item['status'] ?? '-'}'),
-      ),
-      _Panel(
-        title: 'Recent Beneficiaries',
-        subtitle: 'Latest beneficiary records.',
-        child: _ActivityList(items: recentBeneficiaries, titleKey: 'fullName', subtitleBuilder: (item) => '${item['referenceNumber'] ?? '-'} • ${item['district'] ?? '-'}'),
-      ),
-      _Panel(
-        title: 'Recent Approvals',
-        subtitle: 'Latest approval actions.',
-        child: _ActivityList(items: recentApprovals, titleKey: 'title', subtitleBuilder: (item) => '${item['referenceNo'] ?? '-'} • ${item['status'] ?? '-'}'),
-      ),
-    ];
-
     return LayoutBuilder(
       builder: (context, constraints) {
-        final panelWidth = constraints.maxWidth < 780 ? constraints.maxWidth : (constraints.maxWidth - 20) / 2;
-        return Wrap(
-          spacing: 20,
-          runSpacing: 20,
-          children: widgets.map((widget) => SizedBox(width: panelWidth, child: widget)).toList(),
+        final stacked = constraints.maxWidth < 980;
+        final widgets = [
+          _Panel(
+            title: 'Recent Schemes',
+            subtitle: 'Most recently created schemes.',
+            child: _ActivityList(items: recentSchemes, titleKey: 'title', subtitleBuilder: (item) => '${item['code'] ?? '-'} • ${item['department'] ?? '-'}'),
+          ),
+          _Panel(
+            title: 'Recent Projects',
+            subtitle: 'Latest project records.',
+            child: _ActivityList(items: recentProjects, titleKey: 'name', subtitleBuilder: (item) => '${item['code'] ?? '-'} • ${item['status'] ?? '-'}'),
+          ),
+          _Panel(
+            title: 'Recent Beneficiaries',
+            subtitle: 'Latest beneficiary entries.',
+            child: _ActivityList(items: recentBeneficiaries, titleKey: 'fullName', subtitleBuilder: (item) => '${item['referenceNumber'] ?? '-'} • ${item['district'] ?? '-'}'),
+          ),
+          _Panel(
+            title: 'Recent Approvals',
+            subtitle: 'Latest approval activity.',
+            child: _ActivityList(items: recentApprovals, titleKey: 'title', subtitleBuilder: (item) => '${item['referenceNo'] ?? '-'} • ${item['status'] ?? '-'}'),
+          ),
+        ];
+
+        if (stacked) {
+          return Column(children: _withSpacing(widgets, const SizedBox(height: 20)));
+        }
+
+        return Column(
+          children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: widgets[0]), const SizedBox(width: 20), Expanded(child: widgets[1])]),
+            const SizedBox(height: 20),
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: widgets[2]), const SizedBox(width: 20), Expanded(child: widgets[3])]),
+          ],
         );
       },
     );
@@ -1525,14 +1573,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required bool canShowAction,
     required VoidCallback onAction,
   }) {
-    return Wrap(
-      spacing: 16,
-      runSpacing: 16,
-      alignment: WrapAlignment.spaceBetween,
-      crossAxisAlignment: WrapCrossAlignment.center,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 680,
+        Expanded(
           child: _SectionHeader(title: title, subtitle: subtitle),
         ),
         if (canShowAction)
