@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../config/app_config.dart';
 import '../services/api_service.dart';
 import '../services/auth_storage_service.dart';
 import 'dashboard_screen.dart';
@@ -13,56 +14,53 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
 
-  bool isLoading = false;
-  bool obscurePassword = true;
-  String? errorMessage;
+  bool _isSubmitting = false;
+  bool _hidePassword = true;
 
   @override
   void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> login() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
 
-    FocusScope.of(context).unfocus();
-
-    setState(() {
-      isLoading = true;
-      errorMessage = null;
-    });
-
+    setState(() => _isSubmitting = true);
     try {
-      final res = await ApiService.login(
-        email: emailController.text,
-        password: passwordController.text,
+      final response = await ApiService.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
       );
 
-      await AuthStorageService.saveLogin(
-        token: res['accessToken'] as String,
-        user: res['user'] as Map<String, dynamic>?,
-      );
+      final token = (response['accessToken'] ?? '').toString();
+      final user = response['user'] is Map<String, dynamic>
+          ? Map<String, dynamic>.from(response['user'] as Map<String, dynamic>)
+          : <String, dynamic>{};
+
+      if (token.isEmpty) {
+        throw Exception('Backend did not return an access token.');
+      }
+
+      await AuthStorageService.saveLogin(token: token, user: user);
 
       if (!mounted) return;
-
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const DashboardScreen()),
       );
     } catch (e) {
-      setState(() {
-        errorMessage = e.toString().replaceFirst('Exception: ', '');
-      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
     } finally {
       if (mounted) {
-        setState(() => isLoading = false);
+        setState(() => _isSubmitting = false);
       }
     }
   }
@@ -70,175 +68,233 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDesktop = MediaQuery.of(context).size.width >= 980;
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFF4F7FB), Color(0xFFE5ECF6)],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1220),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: isDesktop
-                    ? Row(
-                        children: const [
-                          Expanded(flex: 6, child: _LoginShowcase()),
-                          SizedBox(width: 28),
-                          Expanded(flex: 4, child: _LoginPanel()),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact = constraints.maxWidth < 980;
+
+          return Row(
+            children: [
+              if (!isCompact)
+                Expanded(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF0B325B), Color(0xFF1763A1), Color(0xFF1E88B5)],
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(56),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.14),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(color: Colors.white.withOpacity(0.16)),
+                                ),
+                                child: const Text(
+                                  'JKCIP Programme Management Unit',
+                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+                              const Text(
+                                'A complete MIS for schemes, projects, beneficiaries, approvals, and executive reporting.',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 34,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              const Text(
+                                'This redesigned interface is aligned with the live backend and built for disciplined, government-grade operations across departments.',
+                                style: TextStyle(color: Color(0xFFD8E6F5), fontSize: 16, height: 1.7),
+                              ),
+                              const SizedBox(height: 36),
+                              Wrap(
+                                spacing: 16,
+                                runSpacing: 16,
+                                children: const [
+                                  _FeatureBadge(icon: Icons.dashboard_outlined, label: 'Executive dashboard'),
+                                  _FeatureBadge(icon: Icons.account_tree_outlined, label: 'Scheme to project flow'),
+                                  _FeatureBadge(icon: Icons.verified_outlined, label: 'Approval lifecycle'),
+                                  _FeatureBadge(icon: Icons.groups_outlined, label: 'Beneficiary oversight'),
+                                ],
+                              ),
+                            ],
+                          ),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.10),
+                              borderRadius: BorderRadius.circular(28),
+                              border: Border.all(color: Colors.white.withOpacity(0.14)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Connected backend',
+                                  style: TextStyle(
+                                    color: Color(0xFFD8E6F5),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  AppConfig.baseUrl,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
-                      )
-                    : SingleChildScrollView(
-                        child: Column(
-                          children: const [
-                            _LoginShowcase(compact: true),
-                            SizedBox(height: 20),
-                            _LoginPanel(),
-                          ],
+                      ),
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 470),
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(28),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Sign in to JKCIP MIS',
+                                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Use your authorized credentials to enter the MIS and access dashboards, operational modules, and reports.',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: const Color(0xFF5E6B7A),
+                                    height: 1.6,
+                                  ),
+                                ),
+                                const SizedBox(height: 28),
+                                TextFormField(
+                                  controller: _emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Official email',
+                                    prefixIcon: Icon(Icons.alternate_email_rounded),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Please enter your email.';
+                                    }
+                                    if (!value.contains('@')) {
+                                      return 'Please enter a valid email.';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                                TextFormField(
+                                  controller: _passwordController,
+                                  obscureText: _hidePassword,
+                                  decoration: InputDecoration(
+                                    labelText: 'Password',
+                                    prefixIcon: const Icon(Icons.lock_outline_rounded),
+                                    suffixIcon: IconButton(
+                                      onPressed: () => setState(() => _hidePassword = !_hidePassword),
+                                      icon: Icon(
+                                        _hidePassword
+                                            ? Icons.visibility_outlined
+                                            : Icons.visibility_off_outlined,
+                                      ),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter your password.';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 24),
+                                ElevatedButton.icon(
+                                  onPressed: _isSubmitting ? null : _submit,
+                                  icon: _isSubmitting
+                                      ? const SizedBox(
+                                          height: 18,
+                                          width: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Icon(Icons.login_rounded),
+                                  label: Text(_isSubmitting ? 'Signing in...' : 'Sign in'),
+                                ),
+                                const SizedBox(height: 22),
+                                Container(
+                                  padding: const EdgeInsets.all(18),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF6F8FC),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(color: const Color(0xFFE2EAF2)),
+                                  ),
+                                  child: const Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(Icons.info_outline_rounded, color: Color(0xFF0F4C81)),
+                                      SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'This screen is intentionally kept focused. All MIS complexity appears after authentication in the redesigned operational dashboard.',
+                                          style: TextStyle(height: 1.55, color: Color(0xFF536274)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
-        ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-class _LoginShowcase extends StatelessWidget {
-  final bool compact;
-
-  const _LoginShowcase({this.compact = false});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: EdgeInsets.all(compact ? 24 : 40),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0B3C6F), Color(0xFF14539A)],
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x22000000),
-            blurRadius: 30,
-            offset: Offset(0, 16),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                height: 64,
-                width: 64,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Icon(Icons.account_balance, color: Colors.white, size: 34),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      'JKCIP MIS Portal',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      'Professional monitoring dashboard for institutional management and reporting.',
-                      style: TextStyle(
-                        color: Color(0xFFD9E7F8),
-                        fontSize: 14,
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: compact ? 28 : 48),
-          const Text(
-            'Integrated oversight for users, approvals, programme progress, and operational insights.',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 34,
-              fontWeight: FontWeight.w700,
-              height: 1.2,
-            ),
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            'Access a government-grade interface designed for transparency, speed, and disciplined MIS reporting.',
-            style: TextStyle(
-              color: Color(0xFFD9E7F8),
-              fontSize: 15,
-              height: 1.6,
-            ),
-          ),
-          const SizedBox(height: 28),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: const [
-              _FeatureTile(title: 'Live Dashboard', icon: Icons.insights_rounded),
-              _FeatureTile(title: 'Role Based Access', icon: Icons.verified_user_outlined),
-              _FeatureTile(title: 'Institutional Reporting', icon: Icons.bar_chart_rounded),
-            ],
-          ),
-          const SizedBox(height: 32),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              color: Colors.white.withOpacity(0.12),
-              border: Border.all(color: Colors.white.withOpacity(0.18)),
-            ),
-            child: Wrap(
-              spacing: 20,
-              runSpacing: 16,
-              children: const [
-                _StatChip(label: 'Secure Access', value: '24x7'),
-                _StatChip(label: 'MIS View', value: 'Dynamic'),
-                _StatChip(label: 'Operational Mode', value: 'Realtime'),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FeatureTile extends StatelessWidget {
-  final String title;
+class _FeatureBadge extends StatelessWidget {
   final IconData icon;
+  final String label;
 
-  const _FeatureTile({required this.title, required this.icon});
+  const _FeatureBadge({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +303,7 @@ class _FeatureTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.12),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.16)),
+        border: Border.all(color: Colors.white.withOpacity(0.14)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -255,204 +311,10 @@ class _FeatureTile extends StatelessWidget {
           Icon(icon, color: Colors.white),
           const SizedBox(width: 10),
           Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
+            label,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _StatChip extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _StatChip({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(color: Color(0xFFD9E7F8)),
-        ),
-      ],
-    );
-  }
-}
-
-class _LoginPanel extends StatefulWidget {
-  const _LoginPanel();
-
-  @override
-  State<_LoginPanel> createState() => _LoginPanelState();
-}
-
-class _LoginPanelState extends State<_LoginPanel> {
-  @override
-  Widget build(BuildContext context) {
-    final state = context.findAncestorStateOfType<_LoginScreenState>()!;
-    final theme = Theme.of(context);
-
-    return Container(
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 24,
-            offset: Offset(0, 14),
-          ),
-        ],
-      ),
-      child: Form(
-        key: state._formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Sign in',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF102A43),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Use your registered credentials to access the JKCIP MIS dashboard.',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: const Color(0xFF6B7C93),
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 24),
-            if (state.errorMessage != null) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF1F0),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFFFD2CC)),
-                ),
-                child: Text(
-                  state.errorMessage!,
-                  style: const TextStyle(
-                    color: Color(0xFFB42318),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-            ],
-            TextFormField(
-              controller: state.emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'Email address',
-                hintText: 'Enter your official email',
-                prefixIcon: Icon(Icons.mail_outline_rounded),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter your email address';
-                }
-                if (!value.contains('@')) {
-                  return 'Please enter a valid email address';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 18),
-            TextFormField(
-              controller: state.passwordController,
-              obscureText: state.obscurePassword,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                hintText: 'Enter your password',
-                prefixIcon: const Icon(Icons.lock_outline_rounded),
-                suffixIcon: IconButton(
-                  onPressed: () {
-                    state.setState(() {
-                      state.obscurePassword = !state.obscurePassword;
-                    });
-                  },
-                  icon: Icon(
-                    state.obscurePassword ? Icons.visibility_off : Icons.visibility,
-                  ),
-                ),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your password';
-                }
-                if (value.length < 6) {
-                  return 'Password must be at least 6 characters';
-                }
-                return null;
-              },
-              onFieldSubmitted: (_) => state.isLoading ? null : state.login(),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: state.isLoading ? null : state.login,
-                child: state.isLoading
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
-                      )
-                    : const Text('Login to MIS'),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFE3E8EF)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.security_rounded, color: Color(0xFF14539A)),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'This portal is intended for authorized institutional users only.',
-                      style: TextStyle(
-                        color: Color(0xFF486581),
-                        fontWeight: FontWeight.w600,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

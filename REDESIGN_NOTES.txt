@@ -1,0 +1,19 @@
+JKCIP MIS Frontend Redesign
+
+This package redesigns the frontend around the current backend modules:
+- auth
+- dashboard
+- schemes
+- projects
+- beneficiaries
+- approvals
+- users
+
+Key notes:
+- Web-oriented Flutter UI
+- API base URL remains configurable through --dart-define=API_BASE_URL=...
+- Default fallback remains http://72.60.28.22:3002/api
+- Main redesign is concentrated in lib/screens/dashboard_screen.dart and login_screen.dart
+
+Recommended build command:
+flutter build web --dart-define=API_BASE_URL=http://72.60.28.22:3002/api
