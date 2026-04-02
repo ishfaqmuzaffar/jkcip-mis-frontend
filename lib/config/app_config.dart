@@ -12,7 +12,7 @@ class AppConfig {
     }
 
     final host = html.window.location.hostname;
-    if (host.isNotEmpty && host != 'localhost') {
+    if ((host ?? '').isNotEmpty && host != 'localhost') {
       return 'http://$host:3002/api';
     }
 
