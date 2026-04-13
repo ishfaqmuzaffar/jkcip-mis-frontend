@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -339,9 +340,8 @@ class ApiService {
 
 
   static Future<Map<String, dynamic>> getLogframeSummary({int? year}) async {
-    final suffix = year == null ? '' : '?year=$year';
     final response = await http.get(
-      _uri('/logframe/dashboard/summary$suffix'),
+      _uri('/logframe/dashboard/summary${year != null ? '?year=$year' : ''}'),
       headers: await _headers(authenticated: true),
     );
 
@@ -352,16 +352,13 @@ class ApiService {
   }
 
   static Future<List<Map<String, dynamic>>> getLogframeOutcomes({int? year}) async {
-    final suffix = year == null ? '' : '?year=$year';
     final response = await http.get(
-      _uri('/logframe/dashboard/outcomes$suffix'),
+      _uri('/logframe/dashboard/outcomes${year != null ? '?year=$year' : ''}'),
       headers: await _headers(authenticated: true),
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return _decodeList(response)
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
+      return _decodeList(response).map((e) => Map<String, dynamic>.from(e as Map)).toList();
     }
     throw _buildException(response);
   }
@@ -373,9 +370,7 @@ class ApiService {
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return _decodeList(response)
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
+      return _decodeList(response).map((e) => Map<String, dynamic>.from(e as Map)).toList();
     }
     throw _buildException(response);
   }
@@ -387,9 +382,39 @@ class ApiService {
     );
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return _decodeList(response)
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .toList();
+      return _decodeList(response).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    throw _buildException(response);
+  }
+
+  static Future<Map<String, dynamic>> previewLogframeImport({
+    required Uint8List bytes,
+    required String filename,
+  }) async {
+    final request = http.MultipartRequest('POST', _uri('/logframe/import/preview'));
+    request.headers.addAll(await _headers(authenticated: true));
+    request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return _decodeMap(response);
+    }
+    throw _buildException(response);
+  }
+
+  static Future<Map<String, dynamic>> commitLogframeImport({
+    required Uint8List bytes,
+    required String filename,
+    required String mode,
+  }) async {
+    final request = http.MultipartRequest('POST', _uri('/logframe/import/commit'));
+    request.headers.addAll(await _headers(authenticated: true));
+    request.fields['mode'] = mode;
+    request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return _decodeMap(response);
     }
     throw _buildException(response);
   }
