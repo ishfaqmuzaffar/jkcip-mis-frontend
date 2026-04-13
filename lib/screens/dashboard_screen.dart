@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/auth_storage_service.dart';
 import 'login_screen.dart';
+import 'logframe_module_view.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -25,8 +26,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic> stats = {};
   Map<String, dynamic> overview = {};
   Map<String, dynamic> recentActivity = {};
+  Map<String, dynamic> logframeSummary = {};
 
   List<Map<String, dynamic>> users = [];
+  List<Map<String, dynamic>> logframeOutcomes = [];
+  List<Map<String, dynamic>> logframeTree = [];
+  List<Map<String, dynamic>> logframeIndicators = [];
   List<Map<String, dynamic>> schemes = [];
   List<Map<String, dynamic>> projects = [];
   List<Map<String, dynamic>> beneficiaries = [];
@@ -51,6 +56,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final items = <_NavItem>[
       const _NavItem('Overview', Icons.grid_view_rounded),
       const _NavItem('Analytics', Icons.analytics_outlined),
+      const _NavItem('Logframe', Icons.schema_outlined),
       const _NavItem('Schemes', Icons.account_tree_outlined),
       const _NavItem('Projects', Icons.assignment_outlined),
       const _NavItem('Beneficiaries', Icons.people_alt_outlined),
@@ -87,6 +93,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final loadedStats = await guarded<Map<String, dynamic>>('Dashboard stats', ApiService.getDashboardStats) ?? {};
       final loadedOverview = await guarded<Map<String, dynamic>>('Dashboard overview', ApiService.getDashboardOverview) ?? {};
       final loadedRecent = await guarded<Map<String, dynamic>>('Recent activity', ApiService.getRecentActivity) ?? {};
+      final loadedLogframeSummary = await guarded<Map<String, dynamic>>('Logframe summary', ApiService.getLogframeSummary) ?? {};
+      final loadedLogframeOutcomes = await guarded<List<Map<String, dynamic>>>('Logframe outcomes', ApiService.getLogframeOutcomes) ?? <Map<String, dynamic>>[];
+      final loadedLogframeTree = await guarded<List<Map<String, dynamic>>>('Logframe tree', ApiService.getLogframeTree) ?? <Map<String, dynamic>>[];
+      final loadedLogframeIndicators = await guarded<List<Map<String, dynamic>>>('Logframe indicators', ApiService.getLogframeIndicators) ?? <Map<String, dynamic>>[];
       final profile = await guarded<Map<String, dynamic>>('Profile', ApiService.getProfile) ?? (cachedUser ?? <String, dynamic>{});
       final loadedSchemes = await guarded<List<Map<String, dynamic>>>('Schemes', ApiService.getSchemes) ?? <Map<String, dynamic>>[];
       final loadedProjects = await guarded<List<Map<String, dynamic>>>('Projects', ApiService.getProjects) ?? <Map<String, dynamic>>[];
@@ -113,6 +123,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         stats = Map<String, dynamic>.from(loadedStats);
         overview = Map<String, dynamic>.from(loadedOverview);
         recentActivity = Map<String, dynamic>.from(loadedRecent);
+        logframeSummary = Map<String, dynamic>.from(loadedLogframeSummary);
+        logframeOutcomes = List<Map<String, dynamic>>.from(loadedLogframeOutcomes);
+        logframeTree = List<Map<String, dynamic>>.from(loadedLogframeTree);
+        logframeIndicators = List<Map<String, dynamic>>.from(loadedLogframeIndicators);
         currentUser = Map<String, dynamic>.from(profile);
         users = List<Map<String, dynamic>>.from(loadedUsers);
         schemes = List<Map<String, dynamic>>.from(loadedSchemes);
@@ -930,6 +944,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 'Analytics':
         body = _buildAnalyticsView();
         break;
+      case 'Logframe':
+        body = _buildLogframeView();
+        break;
       case 'Schemes':
         body = _buildSchemesView();
         break;
@@ -958,6 +975,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _buildModuleWarnings(),
         body,
       ],
+    );
+  }
+
+
+
+  Widget _buildLogframeView() {
+    return LogframeModuleView(
+      summary: logframeSummary,
+      outcomes: logframeOutcomes,
+      tree: logframeTree,
+      indicators: logframeIndicators,
+      onRefresh: loadDashboard,
     );
   }
 

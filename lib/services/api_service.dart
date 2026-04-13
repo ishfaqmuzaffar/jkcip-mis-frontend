@@ -336,4 +336,62 @@ class ApiService {
     }
     throw _buildException(response);
   }
+
+
+  static Future<Map<String, dynamic>> getLogframeSummary({int? year}) async {
+    final suffix = year == null ? '' : '?year=$year';
+    final response = await http.get(
+      _uri('/logframe/dashboard/summary$suffix'),
+      headers: await _headers(authenticated: true),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return _decodeMap(response);
+    }
+    throw _buildException(response);
+  }
+
+  static Future<List<Map<String, dynamic>>> getLogframeOutcomes({int? year}) async {
+    final suffix = year == null ? '' : '?year=$year';
+    final response = await http.get(
+      _uri('/logframe/dashboard/outcomes$suffix'),
+      headers: await _headers(authenticated: true),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return _decodeList(response)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    }
+    throw _buildException(response);
+  }
+
+  static Future<List<Map<String, dynamic>>> getLogframeTree() async {
+    final response = await http.get(
+      _uri('/logframe/tree'),
+      headers: await _headers(authenticated: true),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return _decodeList(response)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    }
+    throw _buildException(response);
+  }
+
+  static Future<List<Map<String, dynamic>>> getLogframeIndicators() async {
+    final response = await http.get(
+      _uri('/logframe/indicators'),
+      headers: await _headers(authenticated: true),
+    );
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return _decodeList(response)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    }
+    throw _buildException(response);
+  }
+
 }
