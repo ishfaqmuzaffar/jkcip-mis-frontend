@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { getApiErrorMessage } from "@/lib/api";
@@ -8,8 +8,8 @@ import { Eye, EyeOff, Leaf, Shield } from "lucide-react";
 export default function LoginPage() {
   const { login, isAuthenticated } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
   const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,6 +21,9 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // Read directly from DOM — handles browser autofill correctly
+    const email = emailRef.current?.value?.trim() ?? "";
+    const password = passwordRef.current?.value ?? "";
     if (!email || !password) return;
     setIsLoading(true);
     setError(null);
@@ -36,12 +39,11 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Panel — branding */}
+      {/* Left Panel */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden"
         style={{ background: "linear-gradient(145deg, #1a3a2a 0%, #2d6b4e 60%, #15803d 100%)" }}
       >
-        {/* Background pattern */}
         <div className="absolute inset-0 opacity-5">
           <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -52,8 +54,6 @@ export default function LoginPage() {
             <rect width="100%" height="100%" fill="url(#grid)" />
           </svg>
         </div>
-
-        {/* Top badge */}
         <div className="relative">
           <div className="flex items-center gap-3 mb-8">
             <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
@@ -65,25 +65,19 @@ export default function LoginPage() {
             </div>
           </div>
         </div>
-
-        {/* Center content */}
         <div className="relative space-y-6">
           <div className="inline-flex items-center gap-2 bg-saffron-600/20 border border-saffron-400/30 rounded-full px-3 py-1">
             <div className="w-1.5 h-1.5 rounded-full bg-saffron-400 animate-pulse" />
             <span className="text-saffron-200 text-xs font-medium">IFAD-Funded Project</span>
           </div>
-
           <h1 className="text-4xl font-bold text-white font-display leading-tight">
             JKCIP Management<br />
             <span className="text-saffron-300">Information System</span>
           </h1>
-
           <p className="text-white/70 text-base leading-relaxed max-w-sm">
             Monitoring & evaluation platform for the Competitiveness Improvement of Agriculture
             and Allied Sectors Project in Jammu & Kashmir.
           </p>
-
-          {/* Stats row */}
           <div className="grid grid-cols-3 gap-4 pt-4">
             {[
               { label: "Outcomes", value: "5" },
@@ -97,8 +91,6 @@ export default function LoginPage() {
             ))}
           </div>
         </div>
-
-        {/* Bottom */}
         <div className="relative">
           <p className="text-white/40 text-xs">
             JKCIP · IFAD · Government of Jammu & Kashmir<br />
@@ -107,10 +99,9 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Panel — login form */}
+      {/* Right Panel */}
       <div className="flex-1 flex flex-col justify-center items-center bg-slate-50 px-6 py-12">
         <div className="w-full max-w-sm">
-          {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl bg-brand-700 flex items-center justify-center">
               <Leaf className="w-5 h-5 text-white" />
@@ -138,28 +129,25 @@ export default function LoginPage() {
               <label className="form-label" htmlFor="email">Email Address</label>
               <input
                 id="email"
+                ref={emailRef}
                 type="email"
                 className="form-input"
                 placeholder="you@jk.gov.in"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
-                required
+                defaultValue=""
               />
             </div>
-
             <div>
               <label className="form-label" htmlFor="password">Password</label>
               <div className="relative">
                 <input
                   id="password"
+                  ref={passwordRef}
                   type={showPass ? "text" : "password"}
                   className="form-input pr-10"
                   placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
-                  required
+                  defaultValue=""
                 />
                 <button
                   type="button"
@@ -173,7 +161,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={isLoading || !email || !password}
+              disabled={isLoading}
               className="w-full py-2.5 px-4 bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
             >
               {isLoading ? (
