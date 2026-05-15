@@ -18,15 +18,11 @@ export default function UsersPage() {
   const [editItem, setEditItem] = useState<User | null>(null);
   const queryClient = useQueryClient();
 
-  // Admin guard
-  if (!isAdmin) {
-    router.replace("/dashboard");
-    return null;
-  }
-
+  // All hooks above — admin guard below
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["users"],
     queryFn: usersApi.list,
+    enabled: isAdmin,
   });
 
   const statusMutation = useMutation({
@@ -38,6 +34,11 @@ export default function UsersPage() {
     },
     onError: (e) => toast.error(getApiErrorMessage(e)),
   });
+
+  if (!isAdmin) {
+    router.replace("/dashboard");
+    return null;
+  }
 
   const filtered = users.filter((u) => {
     const matchSearch = !search ||
