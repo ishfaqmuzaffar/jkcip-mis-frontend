@@ -41,8 +41,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const response = await authApi.login(email, password);
-    const { access_token } = response;
+    // Handle all common NestJS token field names
+    const access_token = (response as any).access_token || (response as any).accessToken || (response as any).token || (response as any).jwt;
 
+    if (!access_token) throw new Error("No token received from server");
     localStorage.setItem("jkcip_token", access_token);
     setToken(access_token);
 
