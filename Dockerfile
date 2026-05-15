@@ -1,30 +1,52 @@
-# -------- BUILD STAGE --------
-FROM ghcr.io/cirruslabs/flutter:stable AS build
+FROM node:20-alpine AS base
 
+# Install dependencies only when needed
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy all files
+COPY package*.json ./
+RUN npm ci
+
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Enable web
-RUN flutter config --enable-web
+# Build args passed from Coolify environment variables
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_APP_NAME
 
-# Get dependencies
-RUN flutter pub get
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build web
-RUN flutter build web --release
+RUN npm run build
 
-# -------- SERVE STAGE --------
-FROM nginx:alpine
+# Production image
+FROM base AS runner
+WORKDIR /app
 
-# Remove default nginx files
-RUN rm -rf /usr/share/nginx/html/*
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Copy built app
-COPY --from=build /app/build/web /usr/share/nginx/html
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
 
-# Expose port
-EXPOSE 80
+COPY --from=builder /app/public ./public
 
-CMD ["nginx", "-g", "daemon off;"]
+RUN mkdir .next
+RUN chown nextjs:nodejs .next
+
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["node", "server.js"]
