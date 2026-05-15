@@ -176,13 +176,29 @@ export default function BeneficiariesPage() {
 
       {dialogOpen && (
         <BeneficiaryDialog
-          beneficiary={editItem}
-          schemes={schemes}
-          projects={projects}
-          onClose={() => { setDialogOpen(false); setEditItem(null); }}
-        />
-      )}
-    </div>
+        <div>
+          <label className="form-label">Category</label>
+          <select className="form-select" value={(form as any).category ?? 'GENERAL'}
+            onChange={(e) => setForm({ ...form, category: e.target.value } as any)}>
+            <option value="GENERAL">General</option>
+            <option value="SC">SC (Scheduled Caste)</option>
+            <option value="ST">ST (Scheduled Tribe)</option>
+            <option value="OBC">OBC (Other Backward Classes)</option>
+            <option value="PHH">PHH (Priority Household / BPL)</option>
+          </select>
+        </div>
+        <div>
+          <label className="form-label">Application Status</label>
+          <select className="form-select" value={(form as any).applicationStatus ?? 'PENDING'}
+            onChange={(e) => setForm({ ...form, applicationStatus: e.target.value } as any)}>
+            <option value="PENDING">Pending</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REVERTED">Reverted</option>
+          </select>
+        </div>
+                />
+              )}
+            </div>
   );
 }
 
