@@ -255,7 +255,7 @@ export default function DashboardPage() {
                 <Legend
                   wrapperStyle={{ fontSize: "11px", color: "#64748b" }}
                   formatter={(value) =>
-                    value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+                    value.toString().replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())
                   }
                 />
               </PieChart>
