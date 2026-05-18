@@ -3,7 +3,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { Layers } from "lucide-react";
 import {
   LayoutDashboard,
   ListTree,
@@ -31,7 +30,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/logframe", label: "Logframe Monitor", icon: ListTree },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/components", label: "Components & Schemes", icon: Layers },
   { href: "/schemes", label: "Schemes", icon: FolderOpen },
   { href: "/projects", label: "Projects", icon: Briefcase },
   { href: "/beneficiaries", label: "Beneficiaries", icon: Users },

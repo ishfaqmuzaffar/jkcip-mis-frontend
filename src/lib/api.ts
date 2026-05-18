@@ -241,13 +241,13 @@ export const logframeApi = {
     return data;
   },
   getDashboard: async (year?: number): Promise<LogframeDashboard> => {
-    const { data } = await api.get<LogframeDashboard>("/logframe/dashboard", {
+    const { data } = await api.get<LogframeDashboard>("/logframe/dashboard/summary", {
       params: year ? { year } : undefined,
     });
     return data;
   },
   getOutcomePerformance: async (year?: number): Promise<OutcomePerformance[]> => {
-    const { data } = await api.get<OutcomePerformance[]>("/logframe/outcomes", {
+    const { data } = await api.get<OutcomePerformance[]>("/logframe/dashboard/outcomes", {
       params: year ? { year } : undefined,
     });
     return data;
