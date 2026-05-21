@@ -188,8 +188,9 @@ export default function BeneficiariesPage() {
 
 function BeneficiaryDialog({ beneficiary, schemes, projects, onClose }: any) {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<CreateBeneficiaryDto>({
+  const [form, setForm] = useState<any>({
     fullName: beneficiary?.fullName ?? "",
+    referenceNumber: beneficiary?.referenceNumber ?? `BEN-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
     gender: beneficiary?.gender ?? "",
     age: beneficiary?.age ?? undefined,
     district: beneficiary?.district ?? "",
@@ -226,6 +227,16 @@ function BeneficiaryDialog({ beneficiary, schemes, projects, onClose }: any) {
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2"><label className="form-label">Full Name *</label>
               <input className="form-input" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></div>
+            <div className="col-span-2">
+            <label className="form-label">Reference Number *</label>
+            <input
+              className="form-input font-mono"
+              value={form.referenceNumber}
+              onChange={(e) => setForm({ ...form, referenceNumber: e.target.value })}
+              placeholder="BEN-2024-0001"
+            />
+            <p className="text-[10px] text-slate-400 mt-1">Auto-generated — edit if you have an existing application number</p>
+          </div>  
             <div><label className="form-label">Gender</label>
               <select className="form-select" value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
                 <option value="">Select…</option>
