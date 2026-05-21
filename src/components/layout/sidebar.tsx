@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import {
+import { Map,
   LayoutDashboard,
   ListTree,
   BarChart3,
@@ -30,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/logframe", label: "Logframe Monitor", icon: ListTree },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/map", label: "GIS Map", icon: Map },
   { href: "/schemes", label: "Schemes", icon: FolderOpen },
   { href: "/projects", label: "Projects", icon: Briefcase },
   { href: "/beneficiaries", label: "Beneficiaries", icon: Users },
