@@ -3,19 +3,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { Map,
-  LayoutDashboard,
-  ListTree,
-  BarChart3,
-  FolderOpen,
-  Briefcase,
-  Users,
-  CheckSquare,
-  UserCog,
-  Leaf,
-  LogOut,
-  ChevronRight,
-  Database,
+import {
+  LayoutDashboard, ListTree, BarChart3, Layers, Map,
+  FileText, FolderOpen, Briefcase, Users, CheckSquare,
+  UserCog, Leaf, LogOut, ChevronRight,
 } from "lucide-react";
 
 interface NavItem {
@@ -23,27 +14,25 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   adminOnly?: boolean;
-  badge?: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/logframe", label: "Logframe Monitor", icon: ListTree },
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/components", label: "Components & Schemes", icon: Layers },
-  { href: "/map", label: "GIS Map", icon: Map },
-  { href: "/reports", label: "Reports", icon: FileText },
-  { href: "/schemes", label: "Schemes", icon: FolderOpen },
-  { href: "/projects", label: "Projects", icon: Briefcase },
-  { href: "/beneficiaries", label: "Beneficiaries", icon: Users },
-  { href: "/approvals", label: "Approvals", icon: CheckSquare },
-  { href: "/users", label: "User Management", icon: UserCog, adminOnly: true },
+  { href: "/dashboard",   label: "Dashboard",           icon: LayoutDashboard },
+  { href: "/logframe",    label: "Logframe Monitor",    icon: ListTree },
+  { href: "/analytics",   label: "Analytics",           icon: BarChart3 },
+  { href: "/components",  label: "Components & Schemes",icon: Layers },
+  { href: "/map",         label: "GIS Map",             icon: Map },
+  { href: "/reports",     label: "Reports",             icon: FileText },
+  { href: "/schemes",     label: "Schemes",             icon: FolderOpen },
+  { href: "/projects",    label: "Projects",            icon: Briefcase },
+  { href: "/beneficiaries",label: "Beneficiaries",      icon: Users },
+  { href: "/approvals",   label: "Approvals",           icon: CheckSquare },
+  { href: "/users",       label: "User Management",     icon: UserCog, adminOnly: true },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout, isAdmin } = useAuth();
-
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
 
   return (
@@ -66,7 +55,6 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {/* Main section */}
         <p className="text-white/30 text-[10px] font-semibold uppercase tracking-widest px-3 mb-2">
           Main Menu
         </p>
@@ -78,7 +66,7 @@ export function Sidebar() {
         <p className="text-white/30 text-[10px] font-semibold uppercase tracking-widest px-3 mb-2">
           Data Management
         </p>
-        {visibleItems.slice(3, 7).map((item) => (
+        {visibleItems.slice(3, 10).map((item) => (
           <NavLink key={item.href} item={item} pathname={pathname} />
         ))}
 
@@ -88,7 +76,7 @@ export function Sidebar() {
             <p className="text-white/30 text-[10px] font-semibold uppercase tracking-widest px-3 mb-2">
               Administration
             </p>
-            {visibleItems.slice(7).map((item) => (
+            {visibleItems.filter(i => i.adminOnly).map((item) => (
               <NavLink key={item.href} item={item} pathname={pathname} />
             ))}
           </>
@@ -125,15 +113,8 @@ export function Sidebar() {
 function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
   const Icon = item.icon;
   const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-
   return (
-    <Link
-      href={item.href}
-      className={cn(
-        "sidebar-item",
-        isActive && "active"
-      )}
-    >
+    <Link href={item.href} className={cn("sidebar-item", isActive && "active")}>
       <Icon className="w-4 h-4 flex-shrink-0" />
       <span className="flex-1 truncate">{item.label}</span>
       {isActive && <ChevronRight className="w-3 h-3 opacity-60" />}
