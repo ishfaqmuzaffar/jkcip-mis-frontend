@@ -24,7 +24,9 @@
     "tailwind-merge": "^2.4.0",
     "date-fns": "^3.6.0",
     "react-hot-toast": "^2.4.1",
-    "leaflet": "^1.9.4"
+    "leaflet": "^1.9.4",
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2"
   },
   "devDependencies": {
     "typescript": "^5.5.3",
