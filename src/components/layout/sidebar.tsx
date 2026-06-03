@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, ListTree, BarChart3, Layers, Map,
   FileText, FolderOpen, Briefcase, Users, CheckSquare,
-  UserCog, Leaf, LogOut, ChevronRight,
+  UserCog, Leaf, LogOut, ChevronRight, ClipboardList,
 } from "lucide-react";
 
 interface NavItem {
@@ -17,17 +17,18 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard",   label: "Dashboard",           icon: LayoutDashboard },
-  { href: "/logframe",    label: "Logframe Monitor",    icon: ListTree },
-  { href: "/analytics",   label: "Analytics",           icon: BarChart3 },
-  { href: "/components",  label: "Components & Schemes",icon: Layers },
-  { href: "/map",         label: "GIS Map",             icon: Map },
-  { href: "/reports",     label: "Reports",             icon: FileText },
-  { href: "/schemes",     label: "Schemes",             icon: FolderOpen },
-  { href: "/projects",    label: "Projects",            icon: Briefcase },
-  { href: "/beneficiaries",label: "Beneficiaries",      icon: Users },
-  { href: "/approvals",   label: "Approvals",           icon: CheckSquare },
-  { href: "/users",       label: "User Management",     icon: UserCog, adminOnly: true },
+  { href: "/dashboard",    label: "Dashboard",            icon: LayoutDashboard },
+  { href: "/logframe",     label: "Logframe Monitor",     icon: ListTree },
+  { href: "/analytics",    label: "Analytics",            icon: BarChart3 },
+  { href: "/components",   label: "Components & Schemes", icon: Layers },
+  { href: "/awpb",         label: "AWPB",                 icon: ClipboardList },
+  { href: "/map",          label: "GIS Map",              icon: Map },
+  { href: "/reports",      label: "Reports",              icon: FileText },
+  { href: "/schemes",      label: "Schemes",              icon: FolderOpen },
+  { href: "/projects",     label: "Projects",             icon: Briefcase },
+  { href: "/beneficiaries",label: "Beneficiaries",        icon: Users },
+  { href: "/approvals",    label: "Approvals",            icon: CheckSquare },
+  { href: "/users",        label: "User Management",      icon: UserCog, adminOnly: true },
 ];
 
 export function Sidebar() {
@@ -64,9 +65,9 @@ export function Sidebar() {
 
         <div className="border-t border-white/10 my-3" />
         <p className="text-white/30 text-[10px] font-semibold uppercase tracking-widest px-3 mb-2">
-          Data Management
+          Planning & Data
         </p>
-        {visibleItems.slice(3, 10).map((item) => (
+        {visibleItems.slice(3, 11).map((item) => (
           <NavLink key={item.href} item={item} pathname={pathname} />
         ))}
 
