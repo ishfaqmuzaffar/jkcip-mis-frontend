@@ -347,3 +347,93 @@ export interface CreateUserDto {
   department?: string;
   phone?: string;
 }
+
+// ─── Survey Module ─────────────────────────────────────────────────────────────
+export type SurveyRoundType = "BASELINE" | "MIDLINE" | "ENDLINE";
+export type SurveyRoundStatus = "DRAFT" | "OPEN" | "CLOSED" | "CONFIRMED";
+export type SurveyResponseStatus = "DRAFT" | "SUBMITTED" | "VERIFIED";
+
+export interface SurveyRound {
+  id: number;
+  type: SurveyRoundType;
+  label: string;
+  year: number;
+  status: SurveyRoundStatus;
+  description?: string;
+  targetCount: number;
+  responseCount?: number;
+  completionRate?: number;
+  openedAt?: string;
+  closedAt?: string;
+  confirmedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SurveyResponse {
+  id: number;
+  roundId: number;
+  status: SurveyResponseStatus;
+  beneficiaryId?: number;
+  beneficiaryUhid?: string;
+  fullName?: string;
+  district?: string;
+  block?: string;
+  village?: string;
+  gender?: string;
+  isYouth: boolean;
+  isBpl: boolean;
+  category?: string;
+  annualIncome?: number;
+  landHolding?: number;
+  isFpoMember?: boolean;
+  satisfactionScore?: number;
+  decisionInfluenceScore?: number;
+  submittedAt?: string;
+  createdAt: string;
+}
+
+export interface SurveyIndicatorValue {
+  id: number;
+  roundId: number;
+  indicatorId: number;
+  computedValue?: number;
+  reviewedValue?: number;
+  reviewNotes?: string;
+  unit?: string;
+  sampleSize: number;
+  maleValue?: number;
+  femaleValue?: number;
+  youthValue?: number;
+  indigenousValue?: number;
+  bplValue?: number;
+  writtenToLogframe: boolean;
+  writtenAt?: string;
+  indicator?: {
+    id: number;
+    code: string;
+    name: string;
+    unit?: string;
+    baseline?: number;
+    midTarget?: number;
+    endTarget?: number;
+    logframeNode?: { code: string; title: string; level: string };
+  };
+}
+
+export interface SurveyStats {
+  totalResponses: number;
+  targetCount: number;
+  completionRate: number;
+  byDistrict: { district: string; count: number }[];
+  byGender: { gender: string; count: number }[];
+  byStatus: { status: string; count: number }[];
+}
+
+export interface SurveyComparison {
+  rounds: { id: number; type: SurveyRoundType; label: string; year: number }[];
+  comparison: Array<{
+    indicator: { id: number; code: string; name: string; unit?: string; logframeNode?: any };
+    rounds: Partial<Record<SurveyRoundType, { value: number; sampleSize: number; roundLabel: string; writtenToLogframe: boolean }>>;
+  }>;
+}

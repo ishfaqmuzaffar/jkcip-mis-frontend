@@ -264,3 +264,69 @@ export function getApiErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return "An unexpected error occurred";
 }
+
+// ─── Surveys ──────────────────────────────────────────────────────────────────
+export const surveyApi = {
+  // Rounds
+  getRounds: async () => {
+    const { data } = await api.get("/surveys/rounds");
+    return data;
+  },
+  getRound: async (id: number) => {
+    const { data } = await api.get(`/surveys/rounds/${id}`);
+    return data;
+  },
+  createRound: async (dto: { type: string; label: string; year: number; description?: string; targetCount?: number }) => {
+    const { data } = await api.post("/surveys/rounds", dto);
+    return data;
+  },
+  updateRound: async (id: number, dto: { label?: string; description?: string; targetCount?: number }) => {
+    const { data } = await api.patch(`/surveys/rounds/${id}`, dto);
+    return data;
+  },
+  openRound: async (id: number) => {
+    const { data } = await api.post(`/surveys/rounds/${id}/open`);
+    return data;
+  },
+  closeRound: async (id: number) => {
+    const { data } = await api.post(`/surveys/rounds/${id}/close`);
+    return data;
+  },
+  confirmRound: async (id: number) => {
+    const { data } = await api.post(`/surveys/rounds/${id}/confirm`);
+    return data;
+  },
+  getStats: async (roundId: number) => {
+    const { data } = await api.get(`/surveys/rounds/${roundId}/stats`);
+    return data;
+  },
+  // Responses
+  getResponses: async (roundId: number, params?: Record<string, any>) => {
+    const { data } = await api.get(`/surveys/rounds/${roundId}/responses`, { params });
+    return data;
+  },
+  submitResponse: async (roundId: number, dto: Record<string, any>) => {
+    const { data } = await api.post(`/surveys/rounds/${roundId}/responses`, dto);
+    return data;
+  },
+  bulkSync: async (roundId: number, responses: any[]) => {
+    const { data } = await api.post(`/surveys/rounds/${roundId}/responses/bulk-sync`, { responses });
+    return data;
+  },
+  // Indicator values
+  getIndicatorValues: async (roundId: number) => {
+    const { data } = await api.get(`/surveys/rounds/${roundId}/indicator-values`);
+    return data;
+  },
+  reviewIndicatorValue: async (roundId: number, indicatorId: number, dto: { reviewedValue: number; reviewNotes?: string }) => {
+    const { data } = await api.patch(`/surveys/rounds/${roundId}/indicator-values/${indicatorId}`, dto);
+    return data;
+  },
+  // Comparison
+  getComparison: async (indicatorIds?: number[]) => {
+    const { data } = await api.get("/surveys/comparison", {
+      params: indicatorIds?.length ? { indicatorIds: indicatorIds.join(",") } : undefined,
+    });
+    return data;
+  },
+};

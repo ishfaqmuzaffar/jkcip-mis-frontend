@@ -22,6 +22,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/analytics",    label: "Analytics",            icon: BarChart3 },
   { href: "/components",   label: "Components & Schemes", icon: Layers },
   { href: "/awpb",         label: "AWPB",                 icon: ClipboardList },
+  { href: "/surveys",      label: "Surveys",              icon: ClipboardCheck },
   { href: "/map",          label: "GIS Map",              icon: Map },
   { href: "/reports",      label: "Reports",              icon: FileText },
   { href: "/schemes",      label: "Schemes",              icon: FolderOpen },
