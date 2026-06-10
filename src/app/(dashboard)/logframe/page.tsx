@@ -45,8 +45,9 @@ function TrendIcon({ current, previous }: { current?: number | null; previous?: 
 function getIndicatorStats(indicator: Indicator, year: number) {
   const prog = indicator.yearlyProgress?.find(p => p.reportYear === year);
   const prevProg = indicator.yearlyProgress?.find(p => p.reportYear === year - 1);
-  const result = prog?.annualResult ?? null;
-  const target = prog?.annualTarget ?? indicator.endTarget ?? 0;
+  // Use annualResult first, fall back to cumulativeResult (used by bulk import scripts)
+  const result = prog?.annualResult ?? prog?.cumulativeResult ?? null;
+  const target = prog?.annualTarget ?? prog?.cumulativeTarget ?? indicator.midTarget ?? indicator.endTarget ?? 0;
   const pct = target > 0 && result !== null ? Math.min((result / target) * 100, 150) : 0;
   return { prog, prevProg, result, target, pct, hasData: result !== null };
 }
@@ -55,12 +56,39 @@ function getIndicatorStats(indicator: Indicator, year: number) {
 export default function LogframePage() {
   const [view, setView] = useState<"overview" | "monitor">("overview");
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
+  const [autoSwitched, setAutoSwitched] = useState(false);
   const { canWrite } = useAuth();
 
   const { data: tree = [], isLoading } = useQuery({
     queryKey: ["logframe-tree"],
     queryFn: logframeApi.getTree,
   });
+
+  // Find latest year that has actual progress data across all indicators
+  function getLatestDataYear(nodes: LogframeNode[]): number {
+    let latest = 0;
+    function walk(ns: LogframeNode[]) {
+      for (const n of ns) {
+        for (const ind of (n.indicators ?? [])) {
+          for (const p of (ind.yearlyProgress ?? [])) {
+            if (p.annualResult !== null && p.reportYear > latest) latest = p.reportYear;
+          }
+        }
+        walk(n.children ?? []);
+      }
+    }
+    walk(nodes);
+    return latest || CURRENT_YEAR - 1;
+  }
+
+  // Auto-switch to the latest data year once tree loads, if current year has no data
+  if (!isLoading && !autoSwitched && tree.length > 0) {
+    const latestYear = getLatestDataYear(tree);
+    if (latestYear !== selectedYear) {
+      setSelectedYear(latestYear);
+    }
+    setAutoSwitched(true);
+  }
 
   const { data: summary } = useQuery({
     queryKey: ["logframe-summary", selectedYear],
