@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, ListTree, BarChart3, Layers, Map,
   FileText, FolderOpen, Briefcase, Users, CheckSquare,
-  UserCog, Leaf, LogOut, ChevronRight, ClipboardList, FileCheck2,
+  UserCog, Leaf, LogOut, ChevronRight, ClipboardList, FileCheck2, GitMerge,
 } from "lucide-react";
 
 interface NavItem {
@@ -23,6 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/components",   label: "Components & Schemes", icon: Layers },
   { href: "/awpb",         label: "AWPB",                 icon: ClipboardList },
   { href: "/surveys",      label: "Surveys",              icon: FileCheck2 },
+  { href: "/mpr",          label: "MPR Data Sync",        icon: GitMerge },
   { href: "/map",          label: "GIS Map",              icon: Map },
   { href: "/reports",      label: "Reports",              icon: FileText },
   { href: "/schemes",      label: "Schemes",              icon: FolderOpen },
